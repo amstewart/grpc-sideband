@@ -5,8 +5,10 @@
 #pragma warning(disable : 4244)
 #pragma warning(disable : 4267)
 
+#include <cstdint>
 #include <data_moniker.pb.h>
-#include <sideband_data.h>
+#include "sideband_data.h"
+#include "sideband_internal.h"
 
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
@@ -23,13 +25,13 @@ inline int64_t InitClientSidebandData(const ni::data_monikers::BeginMonikerSideb
 {
     int64_t token;
     InitClientSidebandData(response.connection_url().c_str(), (::SidebandStrategy)response.strategy(), response.sideband_identifier().c_str(), response.buffer_size(), &token);
-    return token;    
+    return token;
 }
 
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
 inline bool ReadSidebandMessage(int64_t dataToken, google::protobuf::MessageLite* message)
-{    
+{
     bool success = false;
     if (SidebandData_SupportsDirectReadWrite(dataToken) == 1)
     {

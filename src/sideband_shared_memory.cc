@@ -1,17 +1,18 @@
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
+#include <cstdint>
 #include <cstring>
 #include <iostream>
-#include <sideband_data.h>
-#include <sideband_internal.h>
+#include <string>
 
 #ifndef _WIN32
-#include <sys/mman.h>        // shared memory
-#include <sys/stat.h>        // mode constants
-#include <fcntl.h>           // O_* constants
-#include <unistd.h>          // ftruncate
-#include <errno.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <cerrno>
 #endif
+
+#include "sideband_internal.h"
 
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------

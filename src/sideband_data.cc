@@ -1,11 +1,16 @@
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
-#include <map>
-#include <cassert>
-#include <iostream>
-#include <atomic>
-#include <cstring>
 #include "sideband_data.h"
+#include <cstdio>
+#include <atomic>
+#include <cassert>
+#include <condition_variable>
+#include <cstring>
+#include <iostream>
+#include <map>
+#include <mutex>
+#include <string>
+#include <vector>
 #include "sideband_internal.h"
 
 //---------------------------------------------------------------------

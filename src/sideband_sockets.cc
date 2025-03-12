@@ -3,8 +3,12 @@
 #include <sstream>
 #include <iostream>
 #include <cassert>
-#include <sys/types.h> 
 #include <cstring>
+#include <cerrno>
+#include <cstdint>
+#include <atomic>
+#include <string>
+#include <vector>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -13,12 +17,16 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <sys/socket.h>
-#include <netinet/ip.h>
+#include <sys/select.h>
+#include <sys/time.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <netinet/tcp.h>
 #endif
 
-#include <sideband_data.h>
-#include <sideband_internal.h>
+#include "sideband_data.h"
+#include "sideband_internal.h"
+#include "sideband_semaphore.h"
 
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
@@ -66,7 +74,7 @@ SocketSidebandData::SocketSidebandData(uint64_t socket, int64_t bufferSize, bool
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
 SocketSidebandData::~SocketSidebandData()
-{    
+{
 #ifdef _WIN32
     closesocket(_socket);
 #else
@@ -172,7 +180,7 @@ bool SocketSidebandData::ReadFromSocket(void* buffer, int64_t numBytes)
     auto remainingBytes = numBytes;
     char* start = (char*)buffer;
     while (remainingBytes > 0)
-    {        
+    {
         int n;
         bool recvAgain = true;
         do
@@ -224,7 +232,7 @@ std::vector<std::string> SplitUrlString(const std::string& s)
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
 void SocketSidebandData::ReadConnectionId()
-{    
+{
     std::vector<char> buffer(ConnectIdLength());
     ReadFromSocket(buffer.data(), ConnectIdLength());
     _id = std::string(buffer.data(), ConnectIdLength());
@@ -267,7 +275,7 @@ SocketSidebandData* SocketSidebandData::InitFromConnection(int socket)
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
 SocketSidebandData* SocketSidebandData::ClientInit(const std::string& sidebandServiceUrl, const std::string& usageId, int64_t bufferSize, bool lowLatency)
-{    
+{
     auto tokens = SplitUrlString(sidebandServiceUrl);
     auto sidebandData = new SocketSidebandData(usageId, bufferSize, lowLatency);
     sidebandData->ConnectToSocket(tokens[0], tokens[1], usageId, lowLatency);
@@ -278,7 +286,7 @@ SocketSidebandData* SocketSidebandData::ClientInit(const std::string& sidebandSe
 //---------------------------------------------------------------------
 bool SocketSidebandData::Write(const uint8_t* bytes, int64_t byteCount)
 {
-    return WriteToSocket(bytes, byteCount);    
+    return WriteToSocket(bytes, byteCount);
 }
 
 //---------------------------------------------------------------------
@@ -297,10 +305,10 @@ bool SocketSidebandData::Read(uint8_t* bytes, int64_t bufferSize, int64_t* numBy
 //---------------------------------------------------------------------
 bool SocketSidebandData::WriteLengthPrefixed(const uint8_t* bytes, int64_t byteCount)
 {
-    auto result = WriteToSocket(&byteCount, sizeof(int64_t));    
+    auto result = WriteToSocket(&byteCount, sizeof(int64_t));
     if (result)
     {
-        result = WriteToSocket(bytes, byteCount);    
+        result = WriteToSocket(bytes, byteCount);
     }
     return result;
 }
@@ -309,7 +317,7 @@ bool SocketSidebandData::WriteLengthPrefixed(const uint8_t* bytes, int64_t byteC
 //---------------------------------------------------------------------
 bool SocketSidebandData::ReadFromLengthPrefixed(uint8_t* bytes, int64_t bufferSize, int64_t* numBytesRead)
 {
-    return Read(bytes, bufferSize, numBytesRead);    
+    return Read(bytes, bufferSize, numBytesRead);
 }
 
 //---------------------------------------------------------------------
@@ -376,8 +384,8 @@ int32_t _SIDEBAND_FUNC RunSidebandSocketsAccept(const char* address, int port, s
 
     memset((char *) &serv_addr, 0, sizeof(serv_addr));
 
-    serv_addr.sin_family = AF_INET;  
-    serv_addr.sin_addr.s_addr = INADDR_ANY;  
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(port);
 
     if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
@@ -420,7 +428,7 @@ int32_t _SIDEBAND_FUNC RunSidebandSocketsAccept(const char* address, int port, s
             clilen = sizeof(cli_addr);
             newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
             if (newsockfd < 0)
-            { 
+            {
                 std::cout << "ERROR on accept" << std::endl;
                 return -1;
             }

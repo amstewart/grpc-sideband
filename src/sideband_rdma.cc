@@ -2,11 +2,10 @@
 //---------------------------------------------------------------------
 #include <iostream>
 #include <cstring>
-//#include <vector>
 #include <cassert>
 #include <string>
-#include <sideband_data.h>
-#include <sideband_internal.h>
+#include "sideband_data.h"
+#include "sideband_internal.h"
 
 #ifdef ENABLE_RDMA_SIDEBAND
 
@@ -39,7 +38,7 @@ public:
     uint8_t* BeginDirectWrite();
     bool FinishDirectWrite(int64_t byteCount);
 
-    int64_t BufferSize();    
+    int64_t BufferSize();
 
     static void QueueSidebandConnection(::SidebandStrategy strategy, const std::string& id, bool waitForReader, bool waitForWriter, int64_t bufferSize);
     static RdmaSidebandData* InitFromConnection(easyrdma_Session connectedSession, bool isWriteSession);
@@ -53,7 +52,7 @@ private:
     easyrdma_InternalBufferRegion _readBuffer;
     int64_t _bufferSize;
 
-private:    
+private:
     static Semaphore _rdmaConnectQueue;
     static easyrdma_Session _pendingWriteSession;
     static easyrdma_Session _pendingReadSession;
@@ -70,13 +69,13 @@ RdmaSidebandData::RdmaSidebandData(const std::string& id, RdmaSidebandDataImp* i
     SidebandData(implementation->BufferSize()),
     _id(id),
     _imp(implementation)
-{    
+{
 }
 
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
 RdmaSidebandData::~RdmaSidebandData()
-{    
+{
 }
 
 //---------------------------------------------------------------------
@@ -100,7 +99,7 @@ RdmaSidebandData* RdmaSidebandData::ClientInit(const std::string& sidebandServic
     std::cout << "Client connetion using local address: " << localAddress << std::endl;
 
     easyrdma_Session clientReadSession = easyrdma_InvalidSession;
-    auto result = easyrdma_CreateConnectorSession(localAddress.c_str(), 0, &clientReadSession);   
+    auto result = easyrdma_CreateConnectorSession(localAddress.c_str(), 0, &clientReadSession);
     if (result != easyrdma_Error_Success)
     {
         std::cout << "Failed to create connector session: " << result << std::endl;
@@ -151,7 +150,7 @@ bool RdmaSidebandData::Write(const uint8_t* bytes, int64_t bytecount)
 //---------------------------------------------------------------------
 bool RdmaSidebandData::Read(uint8_t* bytes, int64_t bufferSize, int64_t* numBytesRead)
 {
-    return _imp->Read(bytes, bufferSize, numBytesRead);    
+    return _imp->Read(bytes, bufferSize, numBytesRead);
 }
 
 //---------------------------------------------------------------------
@@ -165,7 +164,7 @@ bool RdmaSidebandData::WriteLengthPrefixed(const uint8_t* bytes, int64_t byteCou
 //---------------------------------------------------------------------
 bool RdmaSidebandData::ReadFromLengthPrefixed(uint8_t* bytes, int64_t bufferSize, int64_t* numBytesRead)
 {
-    return _imp->ReadFromLengthPrefixed(bytes, bufferSize, numBytesRead);    
+    return _imp->ReadFromLengthPrefixed(bytes, bufferSize, numBytesRead);
 }
 
 //---------------------------------------------------------------------
@@ -251,7 +250,7 @@ RdmaSidebandDataImp::RdmaSidebandDataImp(easyrdma_Session connectedWriteSession,
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
 RdmaSidebandDataImp::~RdmaSidebandDataImp()
-{    
+{
     if (_connectedWriteSession != easyrdma_InvalidSession)
     {
         auto result = easyrdma_CloseSession(_connectedWriteSession);
@@ -295,7 +294,7 @@ RdmaSidebandData* RdmaSidebandDataImp::ClientInitFromConnection(easyrdma_Session
     auto imp = new RdmaSidebandDataImp(connectedWriteSession, connectedReadSession, lowLatency, bufferSize);
     auto sidebandData = new RdmaSidebandData(id, imp);
     RegisterSidebandData(sidebandData);
-    return sidebandData;        
+    return sidebandData;
 }
 
 //---------------------------------------------------------------------
@@ -328,7 +327,7 @@ RdmaSidebandData* RdmaSidebandDataImp::InitFromConnection(easyrdma_Session conne
         auto sidebandData = new RdmaSidebandData(_nextConnectionId, imp);
         RegisterSidebandData(sidebandData);
         _rdmaConnectQueue.notify();
-        return sidebandData;        
+        return sidebandData;
     }
     return nullptr;
 }
@@ -360,7 +359,7 @@ bool RdmaSidebandDataImp::Read(uint8_t* bytes, int64_t bufferSize, int64_t* numB
 {
     _readBuffer = {};
     int32_t result = easyrdma_Error_Success;
-    do {    
+    do {
         result = easyrdma_AcquireReceivedRegion(_connectedReadSession, timeoutMs, &_readBuffer);
     } while (result == easyrdma_Error_Timeout);
     if (result != easyrdma_Error_Success)
@@ -386,7 +385,7 @@ bool RdmaSidebandDataImp::WriteLengthPrefixed(const uint8_t* bytes, int64_t byte
 {
     easyrdma_AcquireSendRegion(_connectedWriteSession, timeoutMs, &_writeBuffer);
     *reinterpret_cast<int64_t*>(_writeBuffer.buffer) = byteCount;
-    memcpy(reinterpret_cast<uint8_t*>(_writeBuffer.buffer) + sizeof(int64_t), bytes, byteCount);    
+    memcpy(reinterpret_cast<uint8_t*>(_writeBuffer.buffer) + sizeof(int64_t), bytes, byteCount);
     _writeBuffer.usedSize = byteCount + sizeof(int64_t);
     auto result = easyrdma_QueueBufferRegion(_connectedWriteSession, &_writeBuffer, nullptr);
     if (result != easyrdma_Error_Success)
@@ -400,7 +399,7 @@ bool RdmaSidebandDataImp::WriteLengthPrefixed(const uint8_t* bytes, int64_t byte
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
 bool RdmaSidebandDataImp::ReadFromLengthPrefixed(uint8_t* bytes, int64_t bufferSize, int64_t* numBytesRead)
-{    
+{
     memcpy(bytes, static_cast<uint8_t*>(_readBuffer.buffer) + sizeof(int64_t), bufferSize);
     *numBytesRead = bufferSize;
     return true;
@@ -409,7 +408,7 @@ bool RdmaSidebandDataImp::ReadFromLengthPrefixed(uint8_t* bytes, int64_t bufferS
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
 int64_t RdmaSidebandDataImp::ReadLengthPrefix()
-{    
+{
     if (!Read(nullptr, 0, nullptr))
     {
         return false;
@@ -420,7 +419,7 @@ int64_t RdmaSidebandDataImp::ReadLengthPrefix()
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
 const uint8_t* RdmaSidebandDataImp::BeginDirectRead(int64_t byteCount)
-{    
+{
     if (!Read(nullptr, 0, nullptr))
     {
         return nullptr;
@@ -481,7 +480,7 @@ int64_t RdmaSidebandDataImp::BufferSize()
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
 std::string GetRdmaAddress()
-{    
+{
     size_t numAddresses = 0;
 
     auto result = easyrdma_Enumerate(nullptr, &numAddresses, easyrdma_AddressFamily_AF_INET);
@@ -501,7 +500,7 @@ std::string GetRdmaAddress()
         return std::string();
     }
     assert(interfaces.size() == 1);
-    return interfaces.front();    
+    return interfaces.front();
 }
 
 //---------------------------------------------------------------------
@@ -530,7 +529,7 @@ int AcceptSidebandRdmaRequests(int direction, int port)
             std::cout << "Failed easyrdma_CreateListenerSession: " << r << std::endl;
         }
         assert(r == 0);
-        std::cout << "RDMA Connection!" << std::endl;        
+        std::cout << "RDMA Connection!" << std::endl;
         RdmaSidebandDataImp::InitFromConnection(connectedSession, direction == easyrdma_Direction_Send);
     }
     easyrdma_CloseSession(listenSession);
@@ -541,7 +540,7 @@ int AcceptSidebandRdmaRequests(int direction, int port)
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
 int AcceptSidebandRdmaSendRequests()
-{    
+{
 #ifdef ENABLE_RDMA_SIDEBAND
     int port = 50060;
     return AcceptSidebandRdmaRequests(easyrdma_Direction_Send, port);
@@ -553,7 +552,7 @@ int AcceptSidebandRdmaSendRequests()
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
 int AcceptSidebandRdmaReceiveRequests()
-{    
+{
 #ifdef ENABLE_RDMA_SIDEBAND
     int port = 50061;
     return AcceptSidebandRdmaRequests(easyrdma_Direction_Receive, port);
