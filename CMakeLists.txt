@@ -6,6 +6,7 @@ project(ni-grpc-sideband C CXX)
 
 option(INCLUDE_SIDEBAND_RDMA "Include support for RDMA sideband transfers" ON)
 option(SIDEBAND_STATIC "Build static library, disabled by default" OFF)
+option(USE_SUBMODULE_DEPENDENCIES "Use bundled third-party libraries from the /third_party directory instead of distribution libraries" ON)
 
 if(NOT MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
@@ -23,7 +24,16 @@ if (INCLUDE_SIDEBAND_RDMA)
 endif()
 
 if (INCLUDE_SIDEBAND_RDMA)
-  add_subdirectory(third_party/easyrdma ${CMAKE_CURRENT_BINARY_DIR}/easyrdma)
+  if (USE_SUBMODULE_DEPENDENCIES)
+    add_subdirectory(third_party/easyrdma ${CMAKE_CURRENT_BINARY_DIR}/easyrdma)
+  else()
+    find_library(EASYRDMA_LIBRARY REQUIRED NAMES easyrdma)
+    find_path(EASYRDMA_INCLUDE_DIR REQUIRED NAMES easyrdma.h)
+    add_library(easyrdma UNKNOWN IMPORTED)
+    set_target_properties(easyrdma PROPERTIES
+      IMPORTED_LOCATION "${EASYRDMA_LIBRARY}"
+      INTERFACE_INCLUDE_DIRECTORIES "${EASYRDMA_INCLUDE_DIR}")
+  endif()
 endif()
 
 find_package(Threads REQUIRED)
