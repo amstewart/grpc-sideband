@@ -42,7 +42,6 @@ if (INCLUDE_SIDEBAND_RDMA)
 endif()
 
 find_package(Threads REQUIRED)
-link_directories("." "import")
 
 #----------------------------------------------------------------------
 # Include generated *.pb.h files
