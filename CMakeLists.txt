@@ -93,9 +93,9 @@ install(FILES
   src/sideband_grpc.h
   src/sideband_internal.h
   src/sideband_semaphore.h
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
 
 install(FILES
   moniker_src/moniker_service.h
   moniker_src/data_moniker.proto
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
